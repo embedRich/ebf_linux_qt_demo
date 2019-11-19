@@ -16,19 +16,28 @@
 
 #include <QLabel>
 #include <QBoxLayout>
+#include <QPainter>
 #include <QDebug>
 #include <QFile>
 
-#define FLASH_FILE_INFO     "/sys/class/mtd/mtd0/size"
+#define FLASH_FILE_PART     4
+#define FLASH_FILE_INFO     "/sys/class/mtd/mtd%1/size"
 #ifndef FLASH_FILE_EMMC
 #define FLASH_FILE_EMMC     "/sys/class/mmc_host/mmc1/mmc1:0001/block/mmcblk1/size"
 #endif
 
-AboutBoard::AboutBoard(QWidget *parent) : QWidget(parent)
+AboutBoard::AboutBoard(QWidget *parent) : QtListWidget(parent)
 {
+    m_backgroundColor = Qt::transparent;
+    m_nItemSize = 45;
+    m_bHorizontal = false;
+    m_nBaseWidth = Skin::m_nScreenWidth;
+    m_nBaseHeight = 400;
+
     m_strNandSize = "";
     InitBoardInfo();
     InitWidget();
+    connect(this, SIGNAL(currentIndexClicked(int)), this, SLOT(SltCurrentIndexClicked(int)));
 }
 
 AboutBoard::~AboutBoard()
@@ -47,86 +56,67 @@ void AboutBoard::InitBoardInfo()
     }
 
     // nand容量读取
-    QFile file(FLASH_FILE_INFO);
-    if (!file.open(QIODevice::ReadOnly)) {
-        qDebug() << "Read flash size failed";
-        return;
+    quint32 usize, i;
+    QString flash_file;
+    for (i = 0; i < FLASH_FILE_PART; i++) {
+        flash_file = QString(FLASH_FILE_INFO).arg(i);
+
+        QFile file(flash_file);
+        if (!file.open(QIODevice::ReadOnly)) {
+            qDebug() << "Read flash size failed";
+            return;
+        }
+
+        QString strTemp = file.readAll();
+        strTemp.remove("\\n");
+        usize += strTemp.toULong();
+        file.close();
     }
 
-    QString strTemp = file.readAll();
-    strTemp.remove("\\n");
-    quint32 usize = strTemp.toULong();
     usize /= (1024 * 1024);
     m_strNandSize = QString("%1MB NAND").arg(usize);
-    file.close();
+
 #endif
 }
 
 void AboutBoard::InitWidget()
 {
-    QVBoxLayout *verLayoutAll = new QVBoxLayout(this);
-    verLayoutAll->setContentsMargins(20, 20, 0, 10);
-    verLayoutAll->setSpacing(10);
+    int index = 0;
+    m_listItems.insert(index, new QtListWidgetItem(index, tr("硬件版本"),  tr("V1.0"), QPixmap())); index++;
+    m_listItems.insert(index, new QtListWidgetItem(index, tr("开发板型号"),  tr("EBF6UL/6ULL S1 Pro"), QPixmap())); index++;
+    m_strNandSize = m_strNandSize.isEmpty() ? tr("8GB eMMC") : m_strNandSize;
+    m_listItems.insert(index, new QtListWidgetItem(index, tr("存储空间"),  m_strNandSize, QPixmap())); index++;
+    m_listItems.insert(index, new QtListWidgetItem(index, tr("内存大小"),  tr("512MB"), QPixmap())); index++;
+    m_listItems.insert(index, new QtListWidgetItem(index, tr("关于App"),  tr(""), QPixmap(":/images/setting/ic_next.png")));
+}
 
-    {
-        QWidget *widget = new QWidget(this);
-        widget->setObjectName("widgetItem");
-
-        QHBoxLayout *horLayout = new QHBoxLayout(widget);
-        horLayout->setContentsMargins(0, 0, 20, 10);
-
-        horLayout->addWidget(new QLabel(tr("硬件版本"), widget));
-        horLayout->addStretch();
-        horLayout->addWidget(new QLabel(tr("V1.0"), widget));
-        verLayoutAll->addWidget(widget);
+void AboutBoard::SltCurrentIndexClicked(int index)
+{
+    if (4 == index) {
+        emit signalChangePage(6);
     }
+}
 
-    {
-        QWidget *widget = new QWidget(this);
-        widget->setObjectName("widgetItem");
+void AboutBoard::drawItemInfo(QPainter *painter, QtListWidgetItem *item)
+{
+    painter->save();
+    painter->setPen(QColor("#797979"));
+    painter->drawLine(QPoint(item->m_rect.left() - m_nMargin, item->m_rect.bottom()),
+                      QPoint(item->m_rect.right() + m_nMargin, item->m_rect.bottom()));
 
-        QHBoxLayout *horLayout = new QHBoxLayout(widget);
-        horLayout->setContentsMargins(0, 0, 20, 10);
+    QRect rect(item->m_rect.left() + 20, item->m_rect.top(), item->m_rect.width() - 40, item->m_rect.height());
+    QFont font(Skin::m_strAppFontNormal);
+    font.setPixelSize(24);
+    painter->setFont(font);
+    painter->setPen(QColor("#ffffff"));
+    painter->drawText(rect, Qt::AlignVCenter, item->m_strText);
 
-        horLayout->addWidget(new QLabel(tr("开发板型号"), widget));
-        horLayout->addStretch();
-        horLayout->addWidget(new QLabel(tr("EBF6UL/6ULL S1 Pro"), widget));
-        verLayoutAll->addWidget(widget);
+    QPixmap pixmap = item->m_pixmapIcon;
+    if (pixmap.isNull()) {
+        int nW = painter->fontMetrics().width(item->m_strBaseName);
+        painter->drawText(QRect(m_nBaseWidth - nW - 20, rect.top(), nW, rect.height()), Qt::AlignCenter, item->m_strBaseName);
+    } else {
+        painter->drawPixmap(m_nBaseWidth - pixmap.width() - 20, rect.top() + (rect.height() - pixmap.height()) / 2, pixmap);
     }
-
-    {
-        QWidget *widget = new QWidget(this);
-        widget->setObjectName("widgetItem");
-
-        QHBoxLayout *horLayout = new QHBoxLayout(widget);
-        horLayout->setContentsMargins(0, 0, 20, 10);
-
-        horLayout->addWidget(new QLabel(tr("存储空间"), widget));
-        horLayout->addStretch();
-        horLayout->addWidget(new QLabel(m_strNandSize.isEmpty() ? tr("8GB eMMC") : m_strNandSize, widget));
-        verLayoutAll->addWidget(widget);
-    }
-
-    {
-        QWidget *widget = new QWidget(this);
-        widget->setObjectName("widgetItem");
-
-        QHBoxLayout *horLayout = new QHBoxLayout(widget);
-        horLayout->setContentsMargins(0, 0, 20, 10);
-
-        horLayout->addWidget(new QLabel(tr("内存大小"), widget));
-        horLayout->addStretch();
-        horLayout->addWidget(new QLabel(tr("512MB"), widget));
-        verLayoutAll->addWidget(widget);
-    }
-
-    ClickedWidget *widgetUpdate = new ClickedWidget(this);
-    widgetUpdate->setIndex(5, tr("关于App"));
-    connect(widgetUpdate, SIGNAL(signalClicked(int)), this, SIGNAL(signalChangePage(int)));
-    verLayoutAll->addWidget(widgetUpdate);
-
-    this->setStyleSheet(QString("QWidget#widgetItem{border: none; border-bottom: 1px solid #797979; background: none;}"
-                                "QLabel{font-family: '%1'; font: 24px; color: #ffffff;}")
-                        .arg(Skin::m_strAppFontNormal));
-    verLayoutAll->addStretch();
+    painter->restore();
 }

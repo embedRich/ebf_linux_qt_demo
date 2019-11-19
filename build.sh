@@ -1,11 +1,16 @@
-#! /bin/sh
-#source /opt/fsl-imx-x11/4.1.15-2.1.0/environment-setup-cortexa7hf-neon-poky-linux-gnueabi
+#!/bin/bash
+
+set -v
+
+source /opt/fsl-imx-x11/4.1.15-2.1.0/environment-setup-cortexa7hf-neon-poky-linux-gnueabi
 
 rm *.tar.bz2 
 #make distclean
 #svn up
 
 qmake && make 
+
+mkdir -p ./run_dir
 
 cd ./run_dir
 rm -rf libskin libqui
@@ -23,5 +28,5 @@ cp ../thirdpart/libqui/lib/* -arf ./libqui
 #cp ../thirdpart/libqui -arf ~/FireRtfs/opt/
 
 #tar 
-tar -jcvf ../fire-app-hdmi-$(date +%Y%m%d).tar.bz2 *
+tar -jcf ../fire-app-$(date +%Y%m%d).tar.bz2 *
 cd ..

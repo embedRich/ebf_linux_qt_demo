@@ -24,12 +24,15 @@ public:
 
 private:
     void InitWidget();
-
+    void ReadBacklight();
 private:
     QtKnobSwitch        *m_knobSwitch;
     int                  m_nLevel;
 private slots:
     void SltValueChanged(int value);
+
+protected:
+    void resizeEvent(QResizeEvent *e);
 };
 
 #endif // BACKLIGHTWIDGET_H

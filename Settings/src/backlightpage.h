@@ -12,10 +12,10 @@
 #ifndef BACKLIGHTPAGE_H
 #define BACKLIGHTPAGE_H
 
-#include <QWidget>
 #include "qtknobswitch.h"
+#include "qtwidgetbase.h"
 
-class BackLightPage : public QWidget
+class BackLightPage : public QtWidgetBase
 {
     Q_OBJECT
 public:
@@ -32,8 +32,12 @@ private:
 private:
     void InitWidget();
 
+    void ReadBacklight();
 private slots:
     void SltValueChanged(int value);
+
+protected:
+    void resizeEvent(QResizeEvent *e);
 };
 
 #endif // BACKLIGHTPAGE_H

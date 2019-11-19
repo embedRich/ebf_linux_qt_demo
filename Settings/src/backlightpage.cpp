@@ -18,9 +18,10 @@
 #include <QDebug>
 #include <QApplication>
 
-BackLightPage::BackLightPage(QWidget *parent) : QWidget(parent),
+BackLightPage::BackLightPage(QWidget *parent) : QtWidgetBase(parent),
     m_nLevel(0)
 {
+    m_nBaseHeight = 400;
     InitWidget();
 }
 
@@ -33,12 +34,30 @@ void BackLightPage::InitWidget()
 {
     m_knobSwitch = new QtKnobSwitch(this);
     m_knobSwitch->setFont(QFont(Skin::m_strAppFontBold));
-    m_knobSwitch->setFixedSize(350, 350);
     connect(m_knobSwitch, SIGNAL(valueChanged(int)), this, SLOT(SltValueChanged(int)));
+    // 读取配置
+    ReadBacklight();
+}
 
-    QHBoxLayout *horLayout = new QHBoxLayout(this);
-    horLayout->setContentsMargins(10, 20, 10, 20);
-    horLayout->addWidget(m_knobSwitch, 1);
+// 读取配置
+void BackLightPage::ReadBacklight()
+{
+#ifdef __arm__
+    QString strFile = "/sys/class/backlight/backlight/brightness";
+    QFile file(strFile);
+    if (!file.open(QIODevice::ReadOnly)) {
+        qDebug() << "open Leds failed!";
+        m_nLevel = 5;
+        return;
+    }
+
+    QString strTemp = file.readAll();
+    m_nLevel = strTemp.toInt();
+    if (m_nLevel > 5 && m_nLevel < 100) {
+        m_knobSwitch->setValue(m_nLevel);
+    }
+    file.close();
+#endif
 }
 
 void BackLightPage::SltValueChanged(int value)
@@ -58,4 +77,11 @@ void BackLightPage::SltValueChanged(int value)
     in << m_nLevel;
     file.close();
 #endif
+}
+
+void BackLightPage::resizeEvent(QResizeEvent *e)
+{
+    SetScaleValue();
+    m_knobSwitch->setGeometry(242 * m_scaleX, 20 * m_scaleY, 316 * m_scaleY, 316 * m_scaleY);
+    QWidget::resizeEvent(e);
 }
